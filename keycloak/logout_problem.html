@@ -1,0 +1,330 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<!-- saved from url=(0073)https://lists.jboss.org/pipermail/keycloak-user/2018-February/013005.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+   <title> [keycloak-user] Keycloak logout not working for “bearer-only” application exposing REST services
+   </title>
+   <link rel="Index" href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/index.html">
+   <link rel="made" href="mailto:keycloak-user%40lists.jboss.org?Subject=Re:%20%5Bkeycloak-user%5D%20%3D%3Futf-8%3Fq%3FKeycloak_logout_not_working_for_%3F%3D%0A%09%3D%3Futf-8%3Fq%3F%3DE2%3D80%3D9Cbearer-only%3DE2%3D80%3D9D_application_exposing_REST_%3F%3D%0A%09%3D%3Futf-8%3Fq%3Fservices%3F%3D&amp;In-Reply-To=%3CCAJgngAesCWTuYEFbhvS%2Bx6yPZ72MyOeM02WmaUDYBrCnqf77jg%40mail.gmail.com%3E">
+   <meta name="robots" content="index,nofollow">
+   
+   <link rel="Previous" href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/012979.html">
+   <link rel="Next" href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/012974.html">
+ </head>
+ <body bgcolor="#ffffff">
+   <h1>[keycloak-user] Keycloak logout not working for “bearer-only” application exposing REST services</h1>
+    <b>Stian Thorgersen</b> 
+    <a href="mailto:keycloak-user%40lists.jboss.org?Subject=Re:%20%5Bkeycloak-user%5D%20%3D%3Futf-8%3Fq%3FKeycloak_logout_not_working_for_%3F%3D%0A%09%3D%3Futf-8%3Fq%3F%3DE2%3D80%3D9Cbearer-only%3DE2%3D80%3D9D_application_exposing_REST_%3F%3D%0A%09%3D%3Futf-8%3Fq%3Fservices%3F%3D&amp;In-Reply-To=%3CCAJgngAesCWTuYEFbhvS%2Bx6yPZ72MyOeM02WmaUDYBrCnqf77jg%40mail.gmail.com%3E" title="[keycloak-user] Keycloak logout not working for “bearer-only” application exposing REST services">sthorger at redhat.com
+       </a><br>
+    <i>Wed Feb  7 02:54:03 EST 2018</i>
+    <p></p><ul>
+        <li>Previous message: <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/012979.html">[keycloak-user] Keycloak logout not working for “bearer-only” application exposing REST services
+</a></li>
+        <li>Next message: <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/012974.html">[keycloak-user] Client specific enumerated roles
+</a></li>
+         <li> <b>Messages sorted by:</b> 
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/date.html#13005">[ date ]</a>
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/thread.html#13005">[ thread ]</a>
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/subject.html#13005">[ subject ]</a>
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/author.html#13005">[ author ]</a>
+         </li>
+       </ul>
+    <hr>  
+<!--beginarticle-->
+<pre>That perhaps may be a bit over simplified answer ;)
+
+When a session is logged out (through admin console, account management or
+from an application) the whole session and all associated tokens are
+invalidated.
+
+However, bearer only clients verify tokens offline (without consulting the
+server). There's two options to mitigate this. First is to use a short
+expiration on access tokens. Second is to make the bearer only service call
+the token introspection endpoint for every request.
+
+For non-bearer clients they the Keycloak adapters have a admin URL that can
+be configured for the clients. This will make Keycloak send a logout
+request to logout which will invalidate the HTTP session and clear
+associated tokens. If you don't do this you rely on the access token
+timeout to make the client refresh the token to be aware that the session
+is removed.
+
+On 6 February 2018 at 13:31, Sebastien Blanc &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">sblanc at redhat.com</a>&gt; wrote:
+
+&gt;<i> yeah with Keycloak you can not invalidate a particular token that would be
+</i>&gt;<i> too much state to handle for the server.
+</i>&gt;<i>
+</i>&gt;<i> On Mon, Feb 5, 2018 at 7:57 PM, Dan Nemes &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">dan.nemes at ymail.com</a>&gt; wrote:
+</i>&gt;<i>
+</i>&gt;<i> &gt; Hello,
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; I'm coming back after trying to invalidate the token.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; I have implemented the steps written in the previous mail and the token
+</i>&gt;<i> &gt; has been successfully invalidated and it was no longer possible to access
+</i>&gt;<i> &gt; the REST services using it.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; The problem with this workflow is the fact that all tokens that have been
+</i>&gt;<i> &gt; generated before that "not_before" field are invalidated. In my case this
+</i>&gt;<i> &gt; isn't correct because I must support multiple users logged in at the same
+</i>&gt;<i> &gt; time.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; I have also tried to implement the same steps by executing the revocation
+</i>&gt;<i> &gt; endpoint for a specific client application (instead of using it on a
+</i>&gt;<i> realm
+</i>&gt;<i> &gt; level (eg. *<a href="http://localhost:8180/auth/admin/realms/demo/clients/%7B">http://localhost:8180/auth/admin/realms/demo/clients/{</a>
+</i>&gt;<i> client_id}
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8180/auth/admin/realms/demo/clients/%7Bclient_id%7D">http://localhost:8180/auth/admin/realms/demo/clients/%7Bclient_id%7D</a>&gt; *
+</i>&gt;<i> &gt; and *<a href="http://localhost:8180/auth/admin/realms/demo/push-revocation">http://localhost:8180/auth/admin/realms/demo/push-revocation</a>
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8180/auth/admin/realms/demo/push-revocation">http://localhost:8180/auth/admin/realms/demo/push-revocation</a>&gt;*) but
+</i>&gt;<i> this
+</i>&gt;<i> &gt; doesn't seem to work because the users can still access the REST services
+</i>&gt;<i> &gt; (but I don't think this will work either for my case).
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Is there a way to invalidate only one specific token so that the REST
+</i>&gt;<i> &gt; services are not accessible anymore using that specific token?
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Thank you,
+</i>&gt;<i> &gt; Dan Nemes
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; On Sunday, January 21, 2018 4:57 PM, Sebastien Blanc &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">sblanc at redhat.com</a>&gt;
+</i>&gt;<i> &gt; wrote:
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Hi,
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Thx a lot for the sample, I could reproduce your issue. Keep in mind that
+</i>&gt;<i> &gt; you bearer-only app just verify the signature of the token, it has no
+</i>&gt;<i> &gt; session with your kc server. It will validate it until it's valid (if you
+</i>&gt;<i> &gt; wait the access token lifespan (5min by default) you will see it does not
+</i>&gt;<i> &gt; work anymore).
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; So how to invalidate the token ?
+</i>&gt;<i> &gt; 1. Be sure to set an admin URL for your bearer client :
+</i>&gt;<i> &gt; <a href="http://localhost:8080/TestRestProject/rest/service">http://localhost:8080/TestRestProject/rest/service</a>
+</i>&gt;<i> &gt; 2. Then after your do the logout, you must also invocate the revocation
+</i>&gt;<i> &gt; endpoint :
+</i>&gt;<i> &gt;   2.1 You can do that through the admin console in sessions &gt; revocation
+</i>&gt;<i> &gt; and you push the new notBefore value
+</i>&gt;<i> &gt;   2.2 You use the admin REST endpoint to invalidate the token  , it's a 2
+</i>&gt;<i> &gt; step flow : update the notBefore value of the realm by doing a PUT on the
+</i>&gt;<i> &gt; realm and then calling the POST revocation endpoint.
+</i>&gt;<i> &gt; Check the network console of your browser to see the flow when you are in
+</i>&gt;<i> &gt; the admin console and check the admin REST doc)
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Hope this helps,
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Sebi
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; On Sun, Jan 21, 2018 at 1:19 PM, Dan Nemes &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">dan.nemes at ymail.com</a>&gt; wrote:
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Hello,
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Thank you for your quick response.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; I am using keycloak-3.4.0 and wildfly-10.1.0.Final.
+</i>&gt;<i> &gt; I have just added on github the projects I have created for working with
+</i>&gt;<i> &gt; keycloak. You can find them here: <a href="https://github.com/">https://github.com/</a> NemesDan/keycloak
+</i>&gt;<i> &gt; &lt;<a href="https://github.com/NemesDan/keycloak">https://github.com/NemesDan/keycloak</a>&gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Please note that these projects have been started as a POC of how
+</i>&gt;<i> keycloak
+</i>&gt;<i> &gt; can be used so there are other functions that are out of the scope of the
+</i>&gt;<i> &gt; problem I'm having. I am still in the learning phase of how keycloak can
+</i>&gt;<i> be
+</i>&gt;<i> &gt; used at it's full potential.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; NemesDan/keycloak
+</i>&gt;<i> &gt; keycloak POC projects
+</i>&gt;<i> &gt; &lt;<a href="https://github.com/NemesDan/keycloak">https://github.com/NemesDan/keycloak</a>&gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; There are multiple maven projects on this branch.
+</i>&gt;<i> &gt; 1. Project GSDKeycloakProject with 3 modules: customer-app,  product-app
+</i>&gt;<i> &gt; and database-service. The last mentioned module is the bearer-only
+</i>&gt;<i> &gt; application in which the REST services are implemented.
+</i>&gt;<i> &gt;     database-service: contains two classes ProductService
+</i>&gt;<i> &gt; and CustomerService which implement REST services that are accessible
+</i>&gt;<i> only
+</i>&gt;<i> &gt; to logged users that have the correct role assigned.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; 2. KeycloakAccess - should be ignored, out of the scope of the problem
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; 3. RestClientApplication - a maven web project in which the entire
+</i>&gt;<i> &gt; workflow is implemented. This simulates a client application that will
+</i>&gt;<i> &gt; login a user using keycloak, retrieve a token and use that token to
+</i>&gt;<i> access
+</i>&gt;<i> &gt; the "database-service" bearer-only application.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;     In class RestService you can find the following implemented REST web
+</i>&gt;<i> &gt; services
+</i>&gt;<i> &gt;         3.1 GET request on *<a href="http://localhost:8080/">http://localhost:8080/</a>
+</i>&gt;<i> &gt; TestRestProject/rest/service/ login
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8080/TestRestProject/rest/service/login">http://localhost:8080/TestRestProject/rest/service/login</a>&gt;* -&gt; redirects
+</i>&gt;<i> &gt; user to the keycloak login page to perform the login. After login,
+</i>&gt;<i> keycloak
+</i>&gt;<i> &gt; redirects the user to to *<a href="http://localhost:8080/">http://localhost:8080/</a>
+</i>&gt;<i> &gt; TestRestProject/rest/service/ user_logged_in
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8080/TestRestProject/rest/service/user_logged_in">http://localhost:8080/TestRestProject/rest/service/user_logged_in</a>&gt; .*
+</i>&gt;<i> At
+</i>&gt;<i> &gt; this point the code is exchanged for token.
+</i>&gt;<i> &gt;         3.2 GET request on *<a href="http://localhost:8080/">http://localhost:8080/</a>
+</i>&gt;<i> &gt; TestRestProject/rest/service/ call_database/{param}
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8080/TestRestProject/rest/service/">http://localhost:8080/TestRestProject/rest/service/</a>
+</i>&gt;<i> call_database/%7Bparam%7D&gt;*
+</i>&gt;<i> &gt;             - *{param}* could be either *products *or *customers*
+</i>&gt;<i> &gt; *            - *this web service call will use the token from step 3.1 to
+</i>&gt;<i> &gt; access the database-service bearer only REST services
+</i>&gt;<i> &gt;         3.3 GET request on {URL}/logout or {URL}/logout_2
+</i>&gt;<i> &gt;             - these requests were created in order to test the logout
+</i>&gt;<i> &gt; functionality but it seems that the database-service REST services are
+</i>&gt;<i> &gt; still accessible after the logout has been performed which after my
+</i>&gt;<i> &gt; knowledge means that the token has not been invalidated
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; The key point of these projects is to avoid using any keycloak classes to
+</i>&gt;<i> &gt; implement the client application because we do not want to force the
+</i>&gt;<i> &gt; clients to use a specific library.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; If I missed something please let me know.
+</i>&gt;<i> &gt; I appreciate your help.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Thank you,
+</i>&gt;<i> &gt; Dan Nemes
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; On Sunday, January 21, 2018 12:11 PM, Sebastien Blanc &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">sblanc at redhat.com</a>
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; wrote:
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Hi,
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Which version of Keycloak are you using ? Which adapters are you using
+</i>&gt;<i> for
+</i>&gt;<i> &gt; the client and bearer-only apps ? We need this info. And yes sharing your
+</i>&gt;<i> &gt; project (through github for instance) could be really helpful.
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; On Sun, Jan 21, 2018 at 10:17 AM, Dan Nemes &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">dan.nemes at ymail.com</a>&gt; wrote:
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; Hello,
+</i>&gt;<i> &gt; I am unable to logout an user. The logout works for a "confidential"
+</i>&gt;<i> &gt; applications but it doesn't for a "bearer-only" application (the REST
+</i>&gt;<i> &gt; services are still accessible after logout).
+</i>&gt;<i> &gt; I have the following configuration:
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;    - I have one "database" client application defined in Keycloak having
+</i>&gt;<i> &gt; access type "bearer-only" (created with the intent of exposing REST web
+</i>&gt;<i> &gt; services protected by Keycloak based on user roles)
+</i>&gt;<i> &gt;    - I have one "rest_service" client application defined in keycloak
+</i>&gt;<i> &gt; having access type "confidential" (created with the intent of logging in
+</i>&gt;<i> &gt; users and allowing access to the "bearer-only" REST services after a
+</i>&gt;<i> &gt; successful login). The below described workflow is implemented in this
+</i>&gt;<i> &gt; application using REST web services
+</i>&gt;<i> &gt; I am performing the following steps:
+</i>&gt;<i> &gt;    - An http GET request is performed on URL <a href="http://localhost:8180/">http://localhost:8180/</a>
+</i>&gt;<i> &gt; auth/realms/demo/protocol/ openid-connect/auth
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8180/auth/realms/demo/protocol/openid-connect/auth">http://localhost:8180/auth/realms/demo/protocol/openid-connect/auth</a>&gt;
+</i>&gt;<i> which
+</i>&gt;<i> &gt; redirects the user to the login page handled by Keycloak
+</i>&gt;<i> &gt;    - The user performs the login using his credentials (using the
+</i>&gt;<i> &gt; credentials of a user defined in Keycloak)
+</i>&gt;<i> &gt;    - Keycloak redirects the user to the "redirect_uri" which was passed
+</i>&gt;<i> in
+</i>&gt;<i> &gt; step 1. In this step Keycloak also provides as request parameters the
+</i>&gt;<i> &gt; "state" and "code" values.
+</i>&gt;<i> &gt;    - After the user has been redirected back to the application I
+</i>&gt;<i> exchange
+</i>&gt;<i> &gt; the "code" received in step 3 for a token doing a POST request on
+</i>&gt;<i> <a href="http://localhost:8180/auth/">http://localhost:8180/auth/</a>
+</i>&gt;<i> &gt; realms/demo/protocol/openid- connect/token
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8180/auth/realms/demo/protocol/openid-connect/token">http://localhost:8180/auth/realms/demo/protocol/openid-connect/token</a>&gt;
+</i>&gt;<i> which
+</i>&gt;<i> &gt; is done successfully
+</i>&gt;<i> &gt;    - After the access token is available I proceed to access the
+</i>&gt;<i> &gt; "bearer-only" REST web services.
+</i>&gt;<i> &gt; note: the REST web services exposed by the "bearer-only" service are not
+</i>&gt;<i> &gt; accessible unless the user has been logged in and it has the correct
+</i>&gt;<i> "role"
+</i>&gt;<i> &gt; assigned to it.Problem: As stated at the start of the post the user is
+</i>&gt;<i> &gt; still able to access the "bearer-only" REST web services after the logout
+</i>&gt;<i> &gt; has been done. The only thing that seems to work is the logout from the
+</i>&gt;<i> &gt; "confidential" application (the user is not able to access the
+</i>&gt;<i> application
+</i>&gt;<i> &gt; unless he logs in again).If I perform the logout of the user then the
+</i>&gt;<i> REST
+</i>&gt;<i> &gt; web services exposed by the bearer-only application are still accessible.
+</i>&gt;<i> &gt; In the Keycloak server I get the following WARN message: " Some clients
+</i>&gt;<i> &gt; have been not been logged out for user adminuser in demo realm:
+</i>&gt;<i> &gt; rest_service"I tried implementing the logout in three ways:
+</i>&gt;<i> &gt;    - A redirect to URL <a href="http://localhost:8180/">http://localhost:8180/</a> auth/realms/demo/protocol/
+</i>&gt;<i> &gt; openid-connect/logoutpassing
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8180/auth/realms/demo/protocol/openid-">http://localhost:8180/auth/realms/demo/protocol/openid-</a>
+</i>&gt;<i> connect/logoutpassing&gt;
+</i>&gt;<i> &gt; in the redirect_uri and client_id parameters
+</i>&gt;<i> &gt;    - A POST request to <a href="http://localhost:8180/auth/">http://localhost:8180/auth/</a>
+</i>&gt;<i> &gt; realms/demo/protocol/openid- connect/logoutpassing
+</i>&gt;<i> &gt; &lt;<a href="http://localhost:8180/auth/realms/demo/protocol/openid-">http://localhost:8180/auth/realms/demo/protocol/openid-</a>
+</i>&gt;<i> connect/logoutpassing&gt;
+</i>&gt;<i> &gt; in the Authorization Bearer in the header and the client_id,
+</i>&gt;<i> refresh_token,
+</i>&gt;<i> &gt; client_secret and redirect_uri
+</i>&gt;<i> &gt;    - A REST service exposed by the "bearer-only" service which does the
+</i>&gt;<i> &gt; following method call: HttpServletRequest request.logout()
+</i>&gt;<i> &gt; Neither of the above methods is working.PS: I did not want to go in to
+</i>&gt;<i> &gt; many details because even so the post is long enough. If I missed
+</i>&gt;<i> something
+</i>&gt;<i> &gt; please tell me and I will provide the additional information (if
+</i>&gt;<i> possible I
+</i>&gt;<i> &gt; can also attach the actual projects)
+</i>&gt;<i> &gt; Thank you,Dan Nemes
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; |  | Virus-free. www.avg.com  |
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt; ______________________________ _________________
+</i>&gt;<i> &gt; keycloak-user mailing list
+</i>&gt;<i> &gt; <a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">keycloak-user at lists.jboss.org</a>
+</i>&gt;<i> &gt; <a href="https://lists.jboss.org/">https://lists.jboss.org/</a> mailman/listinfo/keycloak-user
+</i>&gt;<i> &gt; &lt;<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">https://lists.jboss.org/mailman/listinfo/keycloak-user</a>&gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> &gt;
+</i>&gt;<i> _______________________________________________
+</i>&gt;<i> keycloak-user mailing list
+</i>&gt;<i> <a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">keycloak-user at lists.jboss.org</a>
+</i>&gt;<i> <a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">https://lists.jboss.org/mailman/listinfo/keycloak-user</a>
+</i>&gt;<i>
+</i></pre>
+
+
+
+<!--endarticle-->
+    <hr>
+    <p></p><ul>
+        <!--threads-->
+	<li>Previous message: <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/012979.html">[keycloak-user] Keycloak logout not working for “bearer-only” application exposing REST services
+</a></li>
+	<li>Next message: <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/012974.html">[keycloak-user] Client specific enumerated roles
+</a></li>
+         <li> <b>Messages sorted by:</b> 
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/date.html#13005">[ date ]</a>
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/thread.html#13005">[ thread ]</a>
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/subject.html#13005">[ subject ]</a>
+              <a href="https://lists.jboss.org/pipermail/keycloak-user/2018-February/author.html#13005">[ author ]</a>
+         </li>
+       </ul>
+
+<hr>
+<a href="https://lists.jboss.org/mailman/listinfo/keycloak-user">More information about the keycloak-user
+mailing list</a><br>
+
+</body></html>
